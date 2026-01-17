@@ -15,8 +15,8 @@ logs_collection = db['logs']
 
 # Bot Configuration
 SESSION_FILE = "session.json"
-USERNAME = "INSERT_USERNAME_HERE"
-PASSWORD = "INSERT_PASSWORD_HERE"
+USERNAME = "i_am_yourtype"
+PASSWORD = "inosuke@2279"
 
 cl = Client()
 
@@ -270,3 +270,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
