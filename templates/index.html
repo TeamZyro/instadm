@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto DM Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen p-6">
+    <div id="app" class="max-w-6xl mx-auto">
+
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-10">
+            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500">
+                Auto DM Panel
+            </h1>
+            <div class="text-sm text-slate-400">Status: <span class="text-green-400">Online</span></div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            <!-- Sidebar / Controls -->
+            <div class="space-y-6">
+                <!-- Add Task Form -->
+                <div class="glass p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-white">Add New Task</h2>
+
+                    <div class="mb-4">
+                        <label class="block text-sm text-slate-400 mb-1">Task Type</label>
+                        <select v-model="newTask.type"
+                            class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white outline-none focus:ring-2 focus:ring-violet-500">
+                            <option value="auto_dm">Auto DM (Inbox)</option>
+                            <option value="comment_dm">Comment Reply -> DM</option>
+                        </select>
+                    </div>
+
+                    <div v-if="newTask.type === 'comment_dm'" class="mb-4 space-y-4">
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Video/Post URL</label>
+                            <input v-model="newTask.post_url" type="text" placeholder="https://instagram.com/p/..."
+                                class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white outline-none focus:ring-2 focus:ring-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-400 mb-1">Trigger Keyword</label>
+                            <input v-model="newTask.keyword" type="text" placeholder="Type specific word or 'Any'"
+                                class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white outline-none focus:ring-2 focus:ring-violet-500">
+                            <p class="text-xs text-slate-500 mt-1">Use "Any" to reply to all comments.</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm text-slate-400 mb-1">Reply Message</label>
+                        <textarea v-model="newTask.reply_message" rows="3" placeholder="Message to send..."
+                            class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white outline-none focus:ring-2 focus:ring-violet-500"></textarea>
+                    </div>
+
+                    <button @click="addTask"
+                        class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold py-2 rounded-lg transition-all shadow-lg hover:shadow-violet-500/30">
+                        Add Task
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="md:col-span-2 space-y-6">
+
+                <!-- Active Tasks -->
+                <div class="glass p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-white">Active Tasks</h2>
+                    <div v-if="tasks.length === 0" class="text-slate-500 text-center py-4">No active tasks.</div>
+                    <div v-else class="space-y-3">
+                        <div v-for="task in tasks" :key="task._id"
+                            class="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span
+                                        class="text-xs font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 uppercase">${
+                                        task.type.replace('_', ' ') }</span>
+                                    <span class="text-xs text-slate-500">${ formatDate(task.created_at) }</span>
+                                </div>
+
+                                <div v-if="task.type === 'comment_dm'" class="text-sm text-slate-300 mb-1">
+                                    <span class="text-slate-500">URL:</span> <a :href="task.post_url" target="_blank"
+                                        class="text-blue-400 hover:underline truncate inline-block max-w-[200px] align-bottom">${
+                                        task.post_url }</a>
+                                </div>
+                                <div v-if="task.type === 'comment_dm'" class="text-sm text-slate-300 mb-1">
+                                    <span class="text-slate-500">Keyword:</span> <span class="text-yellow-400">${
+                                        task.keyword }</span>
+                                </div>
+
+                                <p class="text-sm text-slate-400">Msg: "${ task.reply_message }"</p>
+                            </div>
+                            <button @click="deleteTask(task._id)"
+                                class="text-slate-500 hover:text-red-400 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logs -->
+                <div class="glass p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-white">System Logs</h2>
+                    <div
+                        class="h-64 overflow-y-auto space-y-2 bg-slate-900/50 p-4 rounded-xl border border-slate-800 text-sm font-mono">
+                        <div v-for="log in logs" :key="log._id" class="flex gap-3">
+                            <span class="text-slate-600 shrink-0">[${ formatTime(log.timestamp) }]</span>
+                            <span :class="{
+                                'text-green-400': log.type === 'success',
+                                'text-red-400': log.type === 'error',
+                                'text-blue-400': log.type === 'info'
+                            }">${ log.message }</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            delimiters: ['${', '}'],
+            data() {
+                return {
+                    tasks: [],
+                    logs: [],
+                    newTask: {
+                        type: 'auto_dm',
+                        reply_message: '',
+                        post_url: '',
+                        keyword: 'Any'
+                    }
+                }
+            },
+            methods: {
+                async fetchTasks() {
+                    const res = await fetch('/api/tasks');
+                    this.tasks = await res.json();
+                },
+                async fetchLogs() {
+                    const res = await fetch('/api/logs');
+                    this.logs = await res.json();
+                },
+                async addTask() {
+                    if (!this.newTask.reply_message) return alert("Message required");
+                    if (this.newTask.type === 'comment_dm' && !this.newTask.post_url) return alert("Post URL required");
+
+                    await fetch('/api/tasks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.newTask)
+                    });
+
+                    this.newTask.reply_message = '';
+                    this.newTask.post_url = '';
+                    this.fetchTasks();
+                },
+                async deleteTask(id) {
+                    if (!confirm("Delete this task?")) return;
+                    await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+                    this.fetchTasks();
+                },
+                formatDate(dateStr) {
+                    if (!dateStr) return '';
+                    return new Date(dateStr).toLocaleString();
+                },
+                formatTime(dateStr) {
+                    if (!dateStr) return '';
+                    return new Date(dateStr).toLocaleTimeString();
+                }
+            },
+            mounted() {
+                this.fetchTasks();
+                this.fetchLogs();
+                setInterval(() => {
+                    this.fetchLogs();
+                    // Optionally refresh tasks too
+                }, 3000);
+            }
+        }).mount('#app')
+    </script>
+</body>
+
+</html>
